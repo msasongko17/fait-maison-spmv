@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
   int i, k, M, N, entries, anz, r, c, ret_code;
   double v;
   int *row, *col, *col_width, *first_col_row, *last_col_row, last_col = -1;
-  int *x_used, *nnz_row, *diff_nnz_row;
+  int *x_used, *nnz_row, *diff_nnz_row, *nnz_col;
   float *scatter_row, *misses;
   int total_misses;
   int min_nnz_row, max_nnz_row, min_col_width, max_col_width;
@@ -238,6 +238,11 @@ int main(int argc, char* argv[])
     fprintf(stderr, "couldn't allocate nnz_row using malloc");
     exit(1);
   }
+  nnz_col = (int*)calloc(N, sizeof(int));
+  if(nnz_col == NULL){
+    fprintf(stderr, "couldn't allocate nnz_col using calloc");
+    exit(1);
+  }
   col_width = (int*)calloc(N, sizeof(int));
   if(col_width == NULL){
     fprintf(stderr, "couldn't allocate col_width using malloc");
@@ -275,6 +280,11 @@ int main(int argc, char* argv[])
   }
   for(i = 0; i < N; i++)
     last_used[i] = -1;
+  int *nnz_distance_in_col = (int*)calloc(N, sizeof(int));
+  if(nnz_distance_in_col == NULL){
+    fprintf(stderr, "couldn't allocate nnz_distance_in_col using calloc");
+    exit(1);
+  }
   int *reuse_distance = (int*)calloc(N, sizeof(int));
   if(reuse_distance == NULL){
     fprintf(stderr, "couldn't allocate reuse_distance using malloc");
@@ -348,16 +358,27 @@ int main(int argc, char* argv[])
 
   quickSort(row, col, coo_val, 0, anz-1);
 
+#if 0
+  for(i=0; i<entries; i++)
+	printf("%d %d %d\n", row[i], col[i], coo_val[i]);  
+#endif
+
   int distance;
   for(i = 0; i < anz; i++){
-    if(last_used[(col[i])/16] == -1){
-      last_used[(col[i])/16] = row[i];
+    if(last_used[(col[i])/8] == -1){
+      last_used[(col[i])/8] = row[i];
+      nnz_col[(col[i])/8] += 1;
       continue;
     }
-    distance = row[i] - last_used[(col[i])/16];
-    if(distance <= row[i])
+    distance = row[i] - last_used[(col[i])/8];
+    if(distance <= row[i]) {
       reuse_distance[distance]++;
-    last_used[(col[i])/16] = row[i];
+      if(distance > 0) {
+	      nnz_col[(col[i])/8] += 1;
+	      nnz_distance_in_col[(col[i])/8] += log(distance);
+      }
+    }
+    last_used[(col[i])/8] = row[i];
   }
   int sum = 0;
   for(i = 0; i < 16; i++){
@@ -452,11 +473,11 @@ int main(int argc, char* argv[])
   printf("%f,", (float)total_elems_small_rows*100/anz);
   printf("%f,", mean_i(diff_nnz_row, N-1));
   printf("%d,%d,%f,%f,%f", min_nnz_row, max_nnz_row, mean_i(nnz_row, N), vr_i(nnz_row, N, mean_i(nnz_row, N)), sd_i(nnz_row, N, mean_i(nnz_row, N)));
-  /*printf("%e,%e,%e,", (float)min_col_width/N, (float)max_col_width/N, mean_i(col_width, N));
+  printf("%e,%e,%e,", (float)min_col_width/N, (float)max_col_width/N, mean_i(col_width, N));
   printf("%.3f,", geo_mean(scatter_row, N)); 
   printf("%e,", geo_mean(misses, N));
   printf("%e\n", (float)(2 * anz)/(8 * anz + 12 * N));
-*/
+
   printf("\n");
   free(row);
   free(col);

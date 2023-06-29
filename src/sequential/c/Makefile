@@ -1,5 +1,5 @@
 SHELL := '/bin/bash'
-CC = gcc-7
+CC = gcc
 
 INCLUDES = -I./include
 
