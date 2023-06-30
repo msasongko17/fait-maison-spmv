@@ -183,6 +183,7 @@ int main(int argc, char* argv[])
   int zero_rows = 0, one_rows = 0, two_rows = 0, three_rows = 0, four_rows = 0, five_rows = 0;
   MYTYPE *coo_val;
   FILE *f;
+  double spread_metric = 0.0;
 
   if(argc < 2){
     fprintf(stderr, "Usage: %s [martix-market-filename] \n", argv[0]);
@@ -233,11 +234,13 @@ int main(int argc, char* argv[])
     fprintf(stderr, "couldn't allocate nnz_row using malloc");
     exit(1);
   }
+//#if 0
   diff_nnz_row = (int*)calloc(N, sizeof(int));
   if(diff_nnz_row == NULL){
     fprintf(stderr, "couldn't allocate nnz_row using malloc");
     exit(1);
   }
+//#endif
   nnz_col = (int*)calloc(N, sizeof(int));
   if(nnz_col == NULL){
     fprintf(stderr, "couldn't allocate nnz_col using calloc");
@@ -258,11 +261,13 @@ int main(int argc, char* argv[])
     fprintf(stderr, "couldn't allocate last col row using malloc");
     exit(1);
   }
+//#if 0
   scatter_row = (float*)calloc(N, sizeof(float));
   if(scatter_row == NULL){
     fprintf(stderr, "couldn't allocate scatter_row using malloc");
     exit(1);
   }
+//#endif
   misses = (float*)calloc(N, sizeof(float));
   if(misses == NULL){
     fprintf(stderr, "couldn't allocate misses using malloc");
@@ -280,7 +285,7 @@ int main(int argc, char* argv[])
   }
   for(i = 0; i < N; i++)
     last_used[i] = -1;
-  int *nnz_distance_in_col = (int*)calloc(N, sizeof(int));
+  float *nnz_distance_in_col = (float*)calloc(N, sizeof(float));
   if(nnz_distance_in_col == NULL){
     fprintf(stderr, "couldn't allocate nnz_distance_in_col using calloc");
     exit(1);
@@ -356,11 +361,16 @@ int main(int argc, char* argv[])
     }
   }
 
-  quickSort(row, col, coo_val, 0, anz-1);
-
 #if 0
   for(i=0; i<entries; i++)
-	printf("%d %d %d\n", row[i], col[i], coo_val[i]);  
+        printf("%d %d %f\n", row[i], col[i], coo_val[i]);
+#endif
+  quickSort(row, col, coo_val, 0, anz-1);
+#if 0
+  printf("after quicksort\n");
+//#if 0
+  for(i=0; i<entries; i++)
+	printf("%d %d %f\n", row[i], col[i], coo_val[i]);  
 #endif
 
   int distance;
@@ -368,6 +378,7 @@ int main(int argc, char* argv[])
     if(last_used[(col[i])/8] == -1){
       last_used[(col[i])/8] = row[i];
       nnz_col[(col[i])/8] += 1;
+      //printf("first: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8]);
       continue;
     }
     distance = row[i] - last_used[(col[i])/8];
@@ -375,9 +386,11 @@ int main(int argc, char* argv[])
       reuse_distance[distance]++;
       if(distance > 0) {
 	      nnz_col[(col[i])/8] += 1;
+	      //printf("nth: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d, distance: %d, last_used[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8], distance, last_used[(col[i])/8]);
 	      nnz_distance_in_col[(col[i])/8] += log(distance);
       }
     }
+    //printf("i: %d, distance: %d, col[i], %d, row[i]: %d, last_used[(col[i])/8]: %d\n", i, distance, col[i], row[i], last_used[(col[i])/8]);
     last_used[(col[i])/8] = row[i];
   }
   int sum = 0;
@@ -424,13 +437,17 @@ int main(int argc, char* argv[])
       max_col_width = col_width[i];
     if(col_width[i] < min_col_width)
       min_col_width = col_width[i]; 
+//#if 0
     if(col_width[i] > 0)
       scatter_row[i] = ((float)nnz_row[i])/col_width[i];
+//#endif
     if(nnz_row[i] > 0)
       misses[i] = misses[i]/nnz_row[i];
+//#if 0
     if(i < N-1){
       diff_nnz_row[i] = abs(nnz_row[i] - nnz_row[i+1]);
     }
+//#endif
     if(x_used[i] > 0)
       total_misses++;
     if(nnz_row[i] == 0)
@@ -445,15 +462,30 @@ int main(int argc, char* argv[])
       four_rows++;
     if(nnz_row[i] == 5)
       five_rows++;
-    /*nnz_row[i] = (float)nnz_row[i]/N;
+    float ideal_distance_per_col = 0;
+    float nnz_density_in_col = 0;
+//#if 0
+    if((nnz_col[i] - 1) > 0) {
+	    nnz_distance_in_col[i] /= (nnz_col[i] - 1);
+	    nnz_distance_in_col[i] = exp(nnz_distance_in_col[i]);
+	    float nnz_distance_in_col_old = nnz_distance_in_col[i];
+	    ideal_distance_per_col = (float) (N - 1)/ (float) (nnz_col[i] - 1); 
+	    nnz_density_in_col = (float) nnz_col[i]/N;
+	    nnz_distance_in_col[i] = nnz_distance_in_col[i] / ideal_distance_per_col * nnz_density_in_col;
+	    spread_metric += nnz_distance_in_col[i];
+	    printf("N-1: %d, (nnz_col[i] - 1): %d, i: %d, nnz_distance_in_col_old: %f, nnz_distance_in_col[i]: %f, ideal_distance_per_col: %f, nnz_density_in_col: %0.2f, spread_metric: %lf\n", N-1, (nnz_col[i] - 1), i, nnz_distance_in_col_old, nnz_distance_in_col[i], ideal_distance_per_col, nnz_density_in_col, spread_metric);
+    }
+//#endif
+    nnz_row[i] = (float)nnz_row[i]/N;
     if(nnz_row[i] == 0)
       nnz_row[i] = 0.1/N;
     if(misses[i] == 0)
       misses[i] = 0.1/N;
     if(scatter_row[i] == 0)
-      scatter_row[i] = 0.1/N;*/
+      scatter_row[i] = 0.1/N;
   }
-  
+
+  spread_metric /= (N+7)/8;
   int total_small_rows = empty_rows + one_rows + two_rows + three_rows + four_rows + five_rows;
   int total_elems_small_rows = one_rows * 1 + two_rows * 2 + three_rows * 3 + four_rows * 4 + five_rows * 5;
   int num_diags = 0;
@@ -476,7 +508,8 @@ int main(int argc, char* argv[])
   printf("%e,%e,%e,", (float)min_col_width/N, (float)max_col_width/N, mean_i(col_width, N));
   printf("%.3f,", geo_mean(scatter_row, N)); 
   printf("%e,", geo_mean(misses, N));
-  printf("%e\n", (float)(2 * anz)/(8 * anz + 12 * N));
+  printf("%e,", (float)(2 * anz)/(8 * anz + 12 * N));
+  printf("%lf\n", spread_metric);
 
   printf("\n");
   free(row);
@@ -489,6 +522,8 @@ int main(int argc, char* argv[])
   free(scatter_row);
   free(misses);
   free(x_used);
+  free(nnz_distance_in_col);
+  free(nnz_col);
 
   return 0;
 }
