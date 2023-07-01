@@ -283,8 +283,15 @@ int main(int argc, char* argv[])
     fprintf(stderr, "couldn't allocate last_used using malloc");
     exit(1);
   }
-  for(i = 0; i < N; i++)
+  int *last_used_col = (int*)malloc(N * sizeof(int));
+  if(last_used_col == NULL){
+    fprintf(stderr, "couldn't allocate last_used_col using malloc");
+    exit(1);
+  } 
+  for(i = 0; i < N; i++) {
     last_used[i] = -1;
+    last_used_col[i] = -1;
+  }
   double *nnz_distance_in_col = (double*)calloc(N, sizeof(double));
   if(nnz_distance_in_col == NULL){
     fprintf(stderr, "couldn't allocate nnz_distance_in_col using calloc");
@@ -377,22 +384,38 @@ int main(int argc, char* argv[])
   for(i = 0; i < anz; i++){
     if(last_used[(col[i])/8] == -1){
       last_used[(col[i])/8] = row[i];
-      nnz_col[(col[i])/8] += 1;
       //printf("first: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8]);
       continue;
     }
     distance = row[i] - last_used[(col[i])/8];
     if(distance <= row[i]) {
-      reuse_distance[distance]++;
-      if(distance > 0) {
-	      nnz_col[(col[i])/8] += 1;
-	      //printf("nth: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d, distance: %d, last_used[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8], distance, last_used[(col[i])/8]);
-	      nnz_distance_in_col[(col[i])/8] += log(distance);
-      }
+      reuse_distance[distance]++; 
     }
     //printf("i: %d, distance: %d, col[i], %d, row[i]: %d, last_used[(col[i])/8]: %d\n", i, distance, col[i], row[i], last_used[(col[i])/8]);
     last_used[(col[i])/8] = row[i];
   }
+  // before
+  distance = 0;
+  for(i = 0; i < anz; i++){
+    if(last_used_col[col[i]] == -1){
+      last_used_col[col[i]] = row[i];
+      nnz_col[col[i]] += 1;
+      //printf("first: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8]);
+      continue;
+    }
+    distance = row[i] - last_used_col[col[i]];
+    if(distance <= row[i]) {
+      //reuse_distance[distance]++;
+      if(distance > 0) {
+              nnz_col[col[i]] += 1;
+              //printf("nth: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d, distance: %d, last_used[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8], distance, last_used[(col[i])/8]);
+              nnz_distance_in_col[col[i]] += log(distance);
+      }
+    }
+    //printf("i: %d, distance: %d, col[i], %d, row[i]: %d, last_used[(col[i])/8]: %d\n", i, distance, col[i], row[i], last_used[(col[i])/8]);
+    last_used_col[col[i]] = row[i];
+  }
+  // after
   int sum = 0;
   for(i = 0; i < 16; i++){
     sum += reuse_distance[i];
