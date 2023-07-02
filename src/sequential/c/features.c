@@ -452,6 +452,8 @@ int main(int argc, char* argv[])
   float min_metric = 100;
   float mean_metric = 0.0;
   int nnz_cacheline_count = 0;
+  double beyond_threshold_percent = 0.0;
+  int beyond_threshold_count = 0;
   for(i = 0; i < N; i++){
     if(nnz_row[i] > max_nnz_row)
       max_nnz_row = nnz_row[i];
@@ -494,6 +496,7 @@ int main(int argc, char* argv[])
 //#if 0
     //float max_metric = 0.0;
     //float min_metric = 100;
+//#if 0
     if((nnz_col[i] - 1) > 0) {
 	    nnz_distance_in_col[i] /= (nnz_col[i] - 1);
 	    nnz_distance_in_col[i] = exp(nnz_distance_in_col[i]);
@@ -501,15 +504,27 @@ int main(int argc, char* argv[])
 	    ideal_distance_per_col = (double) (N - 1)/ (double) (nnz_col[i] - 1); 
 	    nnz_density_in_col = (double) nnz_col[i]/N;
 	    nnz_distance_in_col[i] = nnz_distance_in_col[i] / ideal_distance_per_col * nnz_density_in_col;
+	    if(nnz_distance_in_col[i] > 0.05)
+	    	beyond_threshold_count++;
+#if 0
 	    spread_metric += nnz_distance_in_col[i];
 	    if(max_metric < nnz_distance_in_col[i])
 		max_metric = nnz_distance_in_col[i];
 	    if(min_metric > nnz_distance_in_col[i])
 		min_metric = nnz_distance_in_col[i];
 	    nnz_cacheline_count++;
+#endif
 	    //printf("N-1: %d, (nnz_col[i] - 1): %d, i: %d, nnz_distance_in_col_old: %f, nnz_distance_in_col[i]: %f, ideal_distance_per_col: %f, nnz_density_in_col: %0.2f, spread_metric: %lf\n", N-1, (nnz_col[i] - 1), i, nnz_distance_in_col_old, nnz_distance_in_col[i], ideal_distance_per_col, nnz_density_in_col, spread_metric);
     }
 //#endif
+#if 0
+    spread_metric += nnz_col[i];
+    if(max_metric < nnz_col[i])
+	    max_metric = nnz_col[i];
+    if(min_metric > nnz_col[i])
+	    min_metric = nnz_col[i];
+    nnz_cacheline_count++;
+#endif
     nnz_row[i] = (float)nnz_row[i]/N;
     if(nnz_row[i] == 0)
       nnz_row[i] = 0.1/N;
@@ -520,8 +535,9 @@ int main(int argc, char* argv[])
   }
 
   mean_metric = spread_metric/nnz_cacheline_count;
-  spread_metric /= (N+7)/8;
-  
+  //spread_metric /= (N+7)/8;
+  spread_metric = (double) beyond_threshold_count/N * 100;
+
   int total_small_rows = empty_rows + one_rows + two_rows + three_rows + four_rows + five_rows;
   int total_elems_small_rows = one_rows * 1 + two_rows * 2 + three_rows * 3 + four_rows * 4 + five_rows * 5;
   int num_diags = 0;
@@ -547,8 +563,8 @@ int main(int argc, char* argv[])
   printf("%e,", (float)(2 * anz)/(8 * anz + 12 * N));
   printf("%lf\n", spread_metric);
 #endif
-  printf("min: %f, max: %f, mean: %f\n", min_metric, max_metric, mean_metric);
-  printf("\n");
+  //printf("min: %f, max: %f, mean: %f\n", min_metric, max_metric, mean_metric);
+  printf("spread_metric: %e\n", spread_metric);
   free(row);
   free(col);
   free(coo_val);
