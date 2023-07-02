@@ -396,11 +396,12 @@ int main(int argc, char* argv[])
   }
   // before
   distance = 0;
+  printf("anz: %d\n", anz);
   for(i = 0; i < anz; i++){
     if(last_used_col[col[i]] == -1){
       last_used_col[col[i]] = row[i];
       nnz_col[col[i]] += 1;
-      //printf("first: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8]);
+      //printf("first: row[i]: %d, col[i]: %d, nnz_col[col[i]]: %d\n", row[i], col[i], nnz_col[col[i]]);
       continue;
     }
     distance = row[i] - last_used_col[col[i]];
@@ -408,7 +409,7 @@ int main(int argc, char* argv[])
       //reuse_distance[distance]++;
       if(distance > 0) {
               nnz_col[col[i]] += 1;
-              //printf("nth: (col[i])/8: %d, row[i]: %d, col[i]: %d, nnz_col[(col[i])/8]: %d, distance: %d, last_used[(col[i])/8]: %d\n", (col[i])/8, row[i], col[i], nnz_col[(col[i])/8], distance, last_used[(col[i])/8]);
+              //printf("nth: row[i]: %d, col[i]: %d, nnz_col[col[i]]: %d, distance: %d, last_used_col[col[i]]: %d\n", row[i], col[i], nnz_col[col[i]], distance, last_used_col[col[i]]);
               nnz_distance_in_col[col[i]] += log(distance);
       }
     }
@@ -448,10 +449,11 @@ int main(int argc, char* argv[])
   }
   
   total_misses = 0;
-  float max_metric = 0.0;
-  float min_metric = 100;
-  float mean_metric = 0.0;
+  double max_metric = 0.0;
+  double min_metric = 100;
+  double mean_metric = 0.0;
   int nnz_cacheline_count = 0;
+  double nnz_density_in_col_total = 0;
   for(i = 0; i < N; i++){
     if(nnz_row[i] > max_nnz_row)
       max_nnz_row = nnz_row[i];
@@ -494,21 +496,27 @@ int main(int argc, char* argv[])
 //#if 0
     //float max_metric = 0.0;
     //float min_metric = 100;
-    if((nnz_col[i] - 1) > 0) {
+    //if((nnz_col[i] - 1) > 0) {
+#if 0
 	    nnz_distance_in_col[i] /= (nnz_col[i] - 1);
 	    nnz_distance_in_col[i] = exp(nnz_distance_in_col[i]);
 	    double nnz_distance_in_col_old = nnz_distance_in_col[i];
 	    ideal_distance_per_col = (double) (N - 1)/ (double) (nnz_col[i] - 1); 
+#endif
 	    nnz_density_in_col = (double) nnz_col[i]/N;
+	    //printf("col: %d, nnz_col[i]: %d, nnz_density_in_col: %lf\n", i, nnz_col[i], nnz_density_in_col);
+#if 0
 	    nnz_distance_in_col[i] = nnz_distance_in_col[i] / ideal_distance_per_col * nnz_density_in_col;
 	    spread_metric += nnz_distance_in_col[i];
-	    if(max_metric < nnz_distance_in_col[i])
-		max_metric = nnz_distance_in_col[i];
-	    if(min_metric > nnz_distance_in_col[i])
-		min_metric = nnz_distance_in_col[i];
+#endif
+	    if(max_metric < /*nnz_distance_in_col[i]*/nnz_density_in_col)
+		max_metric = nnz_density_in_col;//nnz_distance_in_col[i];
+	    if(min_metric > /*nnz_distance_in_col[i]*/nnz_density_in_col)
+		min_metric = nnz_density_in_col;//nnz_distance_in_col[i];
+	    nnz_density_in_col_total += nnz_density_in_col;
 	    nnz_cacheline_count++;
 	    //printf("N-1: %d, (nnz_col[i] - 1): %d, i: %d, nnz_distance_in_col_old: %f, nnz_distance_in_col[i]: %f, ideal_distance_per_col: %f, nnz_density_in_col: %0.2f, spread_metric: %lf\n", N-1, (nnz_col[i] - 1), i, nnz_distance_in_col_old, nnz_distance_in_col[i], ideal_distance_per_col, nnz_density_in_col, spread_metric);
-    }
+    //}
 //#endif
     nnz_row[i] = (float)nnz_row[i]/N;
     if(nnz_row[i] == 0)
@@ -519,7 +527,7 @@ int main(int argc, char* argv[])
       scatter_row[i] = 0.1/N;
   }
 
-  mean_metric = spread_metric/nnz_cacheline_count;
+  mean_metric = /*spread_metric*/nnz_density_in_col_total/nnz_cacheline_count;
   spread_metric /= (N+7)/8;
   
   int total_small_rows = empty_rows + one_rows + two_rows + three_rows + four_rows + five_rows;
