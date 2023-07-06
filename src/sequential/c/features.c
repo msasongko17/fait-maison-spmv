@@ -506,7 +506,7 @@ int main(int argc, char* argv[])
 	    double nnz_distance_in_col_old = nnz_distance_in_col[i];
 	    ideal_distance_per_col = (double) (N - 1)/ (double) (nnz_col[i] - 1); 
 	    nnz_density_in_col = (double) nnz_col[i]/N;
-	    nnz_distance_in_col[i] = nnz_distance_in_col[i] / ideal_distance_per_col * nnz_density_in_col;
+	    nnz_distance_in_col[i] = /*nnz_density_in_col;*/nnz_distance_in_col[i] / ideal_distance_per_col; //* nnz_density_in_col;
 	    if(nnz_distance_in_col[i] > threshold)
 	    	beyond_threshold_count++;
 #if 0
