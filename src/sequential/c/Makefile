@@ -53,5 +53,5 @@ dense: $(OBJS)
 	$(CC) $(CFLAGS) -S $(INCLUDES) $< 
 
 clean:
-	-rm -f run_* *.o *.s
+	-rm -f run_features *.o *.s
 
