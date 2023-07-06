@@ -184,9 +184,10 @@ int main(int argc, char* argv[])
   MYTYPE *coo_val;
   FILE *f;
   double spread_metric = 0.0;
+  double threshold = 0.0;
 
-  if(argc < 2){
-    fprintf(stderr, "Usage: %s [martix-market-filename] \n", argv[0]);
+  if(argc < 3){
+    fprintf(stderr, "Usage: %s [martix-market-filename] [threshold] \n", argv[0]);
       exit(1);
   }
   else{
@@ -194,6 +195,8 @@ int main(int argc, char* argv[])
       fprintf(stderr, "couldn't open file\n");
       exit(1);
     }
+    sscanf(argv[2], "%lf", &threshold);
+    //printf("threshold: %lf\n", threshold);
   }
 
   anz = count_nnz(f);
@@ -504,7 +507,7 @@ int main(int argc, char* argv[])
 	    ideal_distance_per_col = (double) (N - 1)/ (double) (nnz_col[i] - 1); 
 	    nnz_density_in_col = (double) nnz_col[i]/N;
 	    nnz_distance_in_col[i] = nnz_distance_in_col[i] / ideal_distance_per_col * nnz_density_in_col;
-	    if(nnz_distance_in_col[i] > 0.05)
+	    if(nnz_distance_in_col[i] > threshold)
 	    	beyond_threshold_count++;
 #if 0
 	    spread_metric += nnz_distance_in_col[i];
@@ -564,7 +567,7 @@ int main(int argc, char* argv[])
   printf("%lf\n", spread_metric);
 #endif
   //printf("min: %f, max: %f, mean: %f\n", min_metric, max_metric, mean_metric);
-  printf("spread_metric: %e\n", spread_metric);
+  printf("%e,", spread_metric);
   free(row);
   free(col);
   free(coo_val);
